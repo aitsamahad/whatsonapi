@@ -1,0 +1,42 @@
+{
+  "name": "whatson",
+  "version": "1.0.0",
+  "description": "What's On?, An application for checking venues and booking made in Node/ExpressJS and MongoDB.",
+  "main": "app.js",
+  "author": "Aitsam Ahad",
+  "license": "MIT",
+  "engines": { 
+    "node" : "13.7.0"
+   },
+  "scripts": {
+    "start": "nodemon app.js"
+  },
+  "dependencies": {
+    "@firebase/app-types": "0.x",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.19.0",
+    "compression": "^1.7.4",
+    "connect-flash": "^0.1.1",
+    "ejs": "^3.0.1",
+    "express": "^4.17.1",
+    "express-ejs-layouts": "^2.5.0",
+    "express-promise-router": "^3.0.3",
+    "express-session": "^1.17.0",
+    "firebase-admin": "^8.6.1",
+    "gridfs-stream": "^1.1.1",
+    "helmet": "^3.21.3",
+    "joi": "^14.3.1",
+    "jsonwebtoken": "^8.5.1",
+    "method-override": "^3.0.0",
+    "mongoose": "^5.9.3",
+    "morgan": "^1.9.1",
+    "multer": "^1.4.2",
+    "multer-gridfs-storage": "^4.0.2",
+    "passport": "^0.4.1",
+    "passport-local": "^1.0.0",
+    "pm2": "^3.5.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.2"
+  }
+}
