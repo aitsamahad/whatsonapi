@@ -9,7 +9,7 @@ const Grid = require('gridfs-stream');
 
 
 
-const MongoURI = 'mongodb://localhost/whatson';
+const MongoURI = 'mongodb+srv://aitsamahad:pakistan123@cluster0-6u3ef.mongodb.net/test?retryWrites=true&w=majority';
 
 const conn = mongoose.createConnection(MongoURI, { useNewUrlParser: true, useUnifiedTopology: true });
 
@@ -18,7 +18,7 @@ let gfs;
 conn.once('open', () => {
     gfs = Grid(conn.db, mongoose.mongo);
     gfs.collection('uploads');
-})
+}).then(result => console.log('Connected!')).catch(err => console.log(err));
 
 // Create Storage Engine
 const storage = new GridFsStorage({

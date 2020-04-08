@@ -11,7 +11,7 @@ const session = require('express-session');
 const passport = require('passport');
 
 mongoose.Promise = global.Promise;
-mongoose.connect('mongodb://localhost/whatson', { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true, });
+mongoose.connect('mongodb+srv://aitsamahad:pakistan123@cluster0-6u3ef.mongodb.net/test?retryWrites=true&w=majority', { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true, });
 
 const app = express();
 app.use(helmet());
