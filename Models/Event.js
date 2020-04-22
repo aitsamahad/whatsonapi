@@ -12,7 +12,7 @@ const eventSchema = new Schema({
     address: String,
     lat: String,
     long: String,
-    images: Array,
+    images: [],
     interest: {
         type: Schema.Types.ObjectId,
         ref: 'interest'

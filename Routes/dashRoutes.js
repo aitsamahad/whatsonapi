@@ -1,20 +1,24 @@
-const express = require("express");
-const Organizer = require("../Models/Organizer");
-const passport = require('passport');
-const FIREBASE = require("firebase-admin");
-const { ensureAuthenticated, forwardAuthenticated } = require('../config/auth');
-const Token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6ImFpdHNhbSIsImVtYWlsIjoiYWl0c2FtQGlkZXZlbG9wc3R1ZGlvLmNvbSJ9LCJpYXQiOjE1ODMwNjg4MTJ9.YIr_GadGJEy-RrEYo956oTvxp5RUZf-d8YC4aUX79qw'
-
-const router = express.Router();
+const passport = require("passport");
+const DashboardController = require("../Controllers/Dashboard");
+const { ensureAuthenticated, forwardAuthenticated } = require("../config/auth");
+const router = require("express-promise-router")();
+const path = require("path");
+const Event = require("../Models/Event");
+const crypto = require("crypto");
+const mongoose = require("mongoose");
+const multer = require("multer");
+const GridFsStorage = require("multer-gridfs-storage");
+const Grid = require("gridfs-stream");
+// const Token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6ImFpdHNhbSIsImVtYWlsIjoiYWl0c2FtQGlkZXZlbG9wc3R1ZGlvLmNvbSJ9LCJpYXQiOjE1ODMwNjg4MTJ9.YIr_GadGJEy-RrEYo956oTvxp5RUZf-d8YC4aUX79qw'
 
 //ROUTES
 
 // Login Handling Route
-router.post('/login', (req, res, next) => {
-  passport.authenticate('local', {
-    successRedirect: '/royapi/dashboard/users',
-    failureRedirect: '/royapi/dashboard/login',
-    failureFlash: true
+router.post("/login", (req, res, next) => {
+  passport.authenticate("organizer-login", {
+    successRedirect: "/dashboard/events",
+    failureRedirect: "/dashboard/login",
+    failureFlash: true,
   })(req, res, next);
 });
 
@@ -22,209 +26,137 @@ router.get("/login", forwardAuthenticated, async (req, res) => {
   try {
     // const dashboard = new Dashboard();
 
-  res.render('./login-layout/login/login');
+    res.render("./login");
   } catch (err) {
     console.log(err);
   }
 });
+
+router
+  .route("/events")
+  .get(ensureAuthenticated, DashboardController.getOrganizerEventsPage);
 
 // Logout Handler
-router.get('/logout', (req, res) => {
+router.get("/logout", (req, res) => {
   req.logout();
-  req.flash('error', 'You are logged out');
-  res.redirect('/royapi/dashboard/login');
+  req.flash("error", "You are logged out");
+  res.redirect("/dashboard/login");
 });
 
-// router.post("/login", async (req, res) => {
-//   try {
-//     const dashboard = new Dashboard();
-//     const users = await dashboard.getUsers();
-//     console.log(req.body);
-//     const {email, password} = req.body;
-//     let errors = [];
-//     if(!email || !password) {
-//       errors.push({
-//         msg: 'Please fill in all fields.'
-//       });
-//     }
+const MongoURI = "mongodb://localhost/whatson";
 
-//     if(errors.length > 0) {
-//       res.render('./login-layout/login/login', {
-//         errors,
-//         email
-//       });
-//     } else {
-//       //validation passed
-//     }
-
-//     res.render('./login-layout/login/login');
-//   } catch (err) {
-//     console.log(err);
-//   }
-// });
-
-router.get('/users', ensureAuthenticated, async (req, res) => {
-  try {
-    const dashboard = new Dashboard();
-    const users = await dashboard.getUsers();
-    res.render('./main-layouts/dashboard/users', {data: {users: users}});
-  } catch (err) {
-    console.log(err);
-  }
+const conn = mongoose.createConnection(MongoURI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 });
 
-router.get('/announcement', ensureAuthenticated, async (req, res) => {
-  try {
-    const dashboard = new Dashboard();
-    const users = await dashboard.getUsers();
-    res.render('./main-layouts/dashboard/announcement', {data: {success: false}});
-  } catch (err) {
-    console.log(err);
-  }
-});
+// Initiate variable for GridStream
+let gfs;
+conn
+  .once("open", () => {
+    gfs = Grid(conn.db, mongoose.mongo);
+    gfs.collection("uploads");
+  })
+  .then((result) => console.log("Connected!"))
+  .catch((err) => console.log(err));
 
-router.get('/', ensureAuthenticated, async (req, res) => {
-  try {
-    const dashboard = new Dashboard();
-    const users = await dashboard.getUsers();
-    res.render('./main-layouts/dashboard/users', {data: {users: users}});
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-router.get('/reports', ensureAuthenticated, async (req, res) => {
-  try {
-    const dashboard = new Dashboard();
-    const reports = await dashboard.getQuestionReports();
-    const answerReports = await dashboard.getAnswerReports();
-    res.render('./main-layouts/dashboard/reports', {data: {reports: reports, answerReports: answerReports}});
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-router.post('/reports/:u_id', async (req, res) => {
-  try {
-    const u_id = req.params.u_id;
-    const dashboard = new Dashboard();
-    const userDelete = await dashboard.banUser(u_id);
-    const disableUser = await FIREBASE.auth().updateUser(u_id, {disabled: true});
-    res.redirect('/royapi/dashboard/reports');
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-router.post('/reports/:u_id/enable', async (req, res) => {
-  try {
-    const u_id = req.params.u_id;
-    const dashboard = new Dashboard();
-    const users = await dashboard.enableUser(u_id);
-    const disableUser = await FIREBASE.auth().updateUser(u_id, {disabled: false});
-    res.redirect('/royapi/dashboard/reports');
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-// Send announcements
-router.post('/push-announcements', async (req, res) => {
-  try{
-    const announcement = req.body.announcement;
-    const subjectAnnouncement = req.body.subjectAnnouncement;
-    let registrationTokens = [];
-    const dashboard = new Dashboard();
-    const fcmTokensCollection = await dashboard.getFCMToken();
-
-    fcmTokensCollection.forEach(collection => {
-      registrationTokens.push(collection.fcm_token);
-    })
-
-    let message = {
-      data: {
-        title: subjectAnnouncement,
-        body: announcement,
-        type: "notification"
-      },
-      tokens: registrationTokens
-    };
-
-    FIREBASE.messaging()
-    .sendMulticast(message)
-    // .send(message)
-    .then(response => {
-      if (response.failureCount > 0) {
-        const failedTokens = [];
-        response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            failedTokens.push(registrationTokens[idx]);
-          }
-        });
-        console.log(
-          "List of tokens that caused failures: " + failedTokens
-        );
-      }
-      // Response is a message ID string.
-      console.log("Successfully sent message:", response);
-    })
-    .catch(error => {
-      console.log("Error sending message:", error);
+// Create Storage Engine
+const storage = new GridFsStorage({
+  url: MongoURI,
+  file: (req, file) => {
+    return new Promise((resolve, reject) => {
+      crypto.randomBytes(16, (err, buf) => {
+        if (err) {
+          return reject(err);
+        }
+        const filename = buf.toString("hex") + path.extname(file.originalname);
+        const fileInfo = {
+          filename: filename,
+          bucketName: "uploads",
+        };
+        resolve(fileInfo);
+      });
     });
-    req.flash('error', 'Your Announcements have been sent to all registered and active users.');
-    res.redirect('/royapi/dashboard/announcement');
-
-  } catch (err) {
-    console.log(err);
-  }
+  },
 });
 
-router.post('/users/:u_id', async (req, res) => {
-  try {
-    const u_id = req.params.u_id;
-    const dashboard = new Dashboard();
-    const users = await dashboard.banUser(u_id);
-    const disableUser = await FIREBASE.auth().updateUser(u_id, {disabled: true});
-    res.redirect('/royapi/dashboard/users');
-  } catch (err) {
-    console.log(err);
-  }
+const upload = multer({ storage });
+
+router
+  .route("/events/add")
+  .get(ensureAuthenticated, DashboardController.addEvent)
+  .post(DashboardController.postEvent);
+// .post(upload.array('eventImagesUpload'), TestController.postEvent);
+
+router
+  .route("/events/:eventid/edit")
+  .get(ensureAuthenticated, DashboardController.getEditEventPage)
+  .post(DashboardController.updateEvent);
+
+router
+  .route("/events/add/:eventid/add-dates")
+  .get(ensureAuthenticated, DashboardController.addDate)
+  .post(DashboardController.postAddDate);
+
+router
+  .route("/events/add/:eventid/:typeId")
+  .get(ensureAuthenticated, DashboardController.deleteEventDay);
+
+router
+  .route("/events/add/:eventid/add-image")
+  .post(upload.single("myFileName"), DashboardController.postEventImage);
+// .post(DashboardController.postEventImage);
+
+router
+  .route("/events/:eventid/bookings")
+  .get(DashboardController.getEventsBookings);
+
+router
+  .route("/events/:eventid/bookings/:bookingid")
+  .get(DashboardController.deleteEventBooking);
+
+router.route("/image/:filename").get((req, res) => {
+  const fileId = new mongoose.mongo.ObjectId(req.params.filename);
+  gfs.files.findOne({ _id: fileId }, (err, file) => {
+    // Check if file exists
+    if (!file || file.length === 0) {
+      return res.status(404).json({ err: "No such file exists" });
+    }
+
+    // Check if image
+
+    if (
+      file.contentType === "image/jpeg" ||
+      file.contentType === "image/png" ||
+      file.contentType === "image/jpg"
+    ) {
+      // Read output to browser
+      const readstream = gfs.createReadStream(file.filename);
+      res.set("Content-Type", file.contentType);
+      readstream.pipe(res);
+    } else {
+      res.status(404).json({ err: "Not an image" });
+    }
+  });
 });
 
-router.post('/users/:u_id/enable', async (req, res) => {
-  try {
-    const u_id = req.params.u_id;
-    const dashboard = new Dashboard();
-    const users = await dashboard.enableUser(u_id);
-    const disableUser = await FIREBASE.auth().updateUser(u_id, {disabled: false});
-    res.redirect('/royapi/dashboard/users');
-  } catch (err) {
-    console.log(err);
-  }
-});
+// @route DELETE /files/:id
+// @desc Delete File
+router.route("/files/:eventid/:id").delete(async (req, res) => {
+  const { eventid, id } = req.params;
+  const currentEvent = await Event.findById(eventid);
+  let ImagesTofilter = currentEvent.images;
+  let indexOfArray = currentEvent.images.indexOf(id);
+  let newImageArray = ImagesTofilter.splice(indexOfArray, 1);
+  const result = await Event.find({ _id: eventid }).updateOne(
+    { _id: eventid },
+    { $set: { images: ImagesTofilter } }
+  );
 
-router.post('/questions/:post_id', async (req, res) => {
-  try {
-    const post_id = req.params.post_id;
-    const dashboard = new Dashboard();
-    const deleteQuestion = await dashboard.deleteQuestion(post_id);
-    const deleteQuestionReports = await dashboard.deleteQuestionReport(post_id);
-    res.redirect('/royapi/dashboard/reports');
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-router.post('/answers/:post_id', async (req, res) => {
-  try {
-    const post_id = req.params.post_id;
-    const dashboard = new Dashboard();
-    const deleteAnswer = await dashboard.deleteAnswer(post_id);
-    const deleteAnswerReport = await dashboard.deleteAnswerReport(post_id);
-    res.redirect('/royapi/dashboard/reports');
-  } catch (err) {
-    console.log(err);
-  }
+  gfs.remove({ _id: id, root: "uploads" }, (err, gridStore) => {
+    if (err) return res.status(404).json({ err: err });
+    res.redirect(`/dashboard/events/add/${eventid}/add-dates`);
+  });
 });
 
 module.exports = router;

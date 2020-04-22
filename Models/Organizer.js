@@ -8,7 +8,10 @@ const organizerSchema = new Schema({
     password: String,
     gender: String,
     phone: String,
-    isActive: Boolean,
+    isActive: {
+        type: Boolean,
+        default: true
+    },
     events: [{
         type: Schema.Types.ObjectId,
         ref: 'event'
