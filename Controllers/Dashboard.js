@@ -84,7 +84,7 @@ module.exports = {
     });
   },
   postEvent: async (req, res) => {
-    const userId = req.session.passport.user;
+    const userId = req.session.passport.user.userId;
     const {
       eventTitle,
       eventDescription,
@@ -135,7 +135,7 @@ module.exports = {
   },
 
   updateEvent: async (req, res) => {
-    const userId = req.session.passport.user;
+    const userId = req.session.passport.user.userId;
     const { eventid } = req.params;
     const {
       eventTitle,
@@ -216,8 +216,15 @@ module.exports = {
   postAddDate: async (req, res) => {
     const { eventid } = req.params;
 
-    const { ticketPrice, eventDate, ticketDetails, noTickets } = req.body;
-    console.log(req.body);
+    const {
+      ticketPrice,
+      eventDate,
+      ticketDetails,
+      noTickets,
+      mode,
+      period,
+    } = req.body;
+
     let typesOfTicketArray = [];
     if (Array.isArray(ticketPrice)) {
       for (let i = 0; i < ticketPrice.length; i++) {
@@ -226,6 +233,8 @@ module.exports = {
           noTickets: noTickets[i],
           price: ticketPrice[i],
           ticketsLeft: noTickets[i],
+          mode: mode,
+          period: period,
         };
         typesOfTicketArray.push(typesOfTicket);
       }
@@ -235,21 +244,160 @@ module.exports = {
         noTickets: noTickets,
         price: ticketPrice,
         ticketsLeft: noTickets,
+        mode: mode,
+        period: period,
       };
       typesOfTicketArray.push(typesOfTicketOBJ);
     }
 
     const epochTime = Math.floor(new Date(eventDate) / 1000);
     const daysOBJ = { day: epochTime, typesOfTicket: typesOfTicketArray };
-    const currentDate = new EventDate(daysOBJ);
-    const currentEvent = await Event.findById(eventid);
-    currentDate.event = currentEvent;
-    await currentDate.save();
 
-    currentEvent.days.push(currentDate);
-    await currentEvent.save();
-    req.flash("error", "Your Event day has been added successfully!");
-    res.redirect(`/dashboard/events/add/${eventid}/add-dates`);
+    let dateAlreadyExistsCheck = await EventDate.find({ event: eventid });
+    let counter = 0;
+
+    // console.log(`Mode: ${mode}, ${period}`);
+    // 1 Week = 604800
+    // 1 Day = 86400
+    // 1 Month = 2629743
+    let modeValue = 0;
+    let editCounter = 0;
+    let LAST_EDITED = [];
+    let LAST_INDEX = [];
+    let MODE_VALUE = [];
+
+    let type =
+      mode === "daily"
+        ? 86400
+        : mode === "weekly"
+        ? 604800
+        : mode === "monthly"
+        ? 2629743
+        : 0;
+
+    switch (mode) {
+      case "daily":
+        modeValue = 7 * parseInt(period);
+        break;
+      case "weekly":
+        modeValue = parseInt(period);
+        break;
+      case "monthly":
+        modeValue = parseInt(period);
+        break;
+    }
+
+    if (dateAlreadyExistsCheck.length > 0) {
+      if (mode === "daily" || mode === "weekly" || mode === "monthly") {
+        let DateIncrement = 0;
+
+        for (let a = 0; a < modeValue; a++) {
+          for (let i = 0; i < dateAlreadyExistsCheck.length; i++) {
+            DateIncrement = parseInt(epochTime) + type * a;
+            let ConvertedDate = `${DateIncrement}`;
+
+            if (dateAlreadyExistsCheck[i].day.toString() === ConvertedDate) {
+              dateAlreadyExistsCheck[i].typesOfTicket = [
+                ...dateAlreadyExistsCheck[i].typesOfTicket,
+                ...typesOfTicketArray,
+              ];
+              LAST_INDEX.push(a);
+              MODE_VALUE.push(modeValue);
+              LAST_EDITED.push(dateAlreadyExistsCheck[i].day.toString());
+              const saveEvent = await dateAlreadyExistsCheck[i].save();
+              counter = 0;
+              editCounter++;
+            } else {
+              counter++;
+            }
+          }
+        }
+      } else {
+        for (let i = 0; i < dateAlreadyExistsCheck.length; i++) {
+          if (
+            dateAlreadyExistsCheck[i].day.toString() === epochTime.toString()
+          ) {
+            //
+            dateAlreadyExistsCheck[i].typesOfTicket = [
+              ...dateAlreadyExistsCheck[i].typesOfTicket,
+              ...typesOfTicketArray,
+            ];
+            const saveEvent = await dateAlreadyExistsCheck[i].save();
+            counter = 0;
+            //
+            req.flash("error", "Your Event day has been added successfully!");
+            res.redirect(`/dashboard/events/add/${eventid}/add-dates`);
+            break;
+            //
+          } else {
+            counter++;
+          }
+        }
+      }
+    } else {
+      counter++;
+    }
+
+    if (editCounter > 0) {
+      for (
+        let b = 1;
+        b <=
+        MODE_VALUE[MODE_VALUE.length - 1] - LAST_INDEX[LAST_INDEX.length - 1];
+        b++
+      ) {
+        let DateIncrement =
+          parseInt(LAST_EDITED[LAST_EDITED.length - 1]) + type * b;
+        const currentDate = new EventDate({
+          day: DateIncrement,
+          typesOfTicket: typesOfTicketArray,
+        });
+        const currentEvent = await Event.findById(eventid);
+        currentDate.event = currentEvent;
+        const saveDate = await currentDate.save();
+
+        currentEvent.days.push(currentDate);
+        const saveEvent = await currentEvent.save();
+      }
+      req.flash("error", "Your Event day has been added successfully!");
+      res.redirect(`/dashboard/events/add/${eventid}/add-dates`);
+    } else if (counter > 0) {
+      //
+      if (mode === "base") {
+        let DateIncrement = parseInt(epochTime) + 0 * 0;
+        const currentDate = new EventDate({
+          day: DateIncrement,
+          typesOfTicket: typesOfTicketArray,
+        });
+        const currentEvent = await Event.findById(eventid);
+        currentDate.event = currentEvent;
+        const saveDate = await currentDate.save();
+
+        currentEvent.days.push(currentDate);
+        const saveEvent = await currentEvent.save();
+      } else {
+        for (let i = 0; i < modeValue; i++) {
+          let DateIncrement = parseInt(epochTime) + type * i;
+          const currentDate = new EventDate({
+            day: DateIncrement,
+            typesOfTicket: typesOfTicketArray,
+          });
+          const currentEvent = await Event.findById(eventid);
+          currentDate.event = currentEvent;
+          const saveDate = await currentDate.save();
+
+          currentEvent.days.push(currentDate);
+          const saveEvent = await currentEvent.save();
+        }
+      }
+
+      //
+
+      req.flash("error", "Your Event day has been added successfully!");
+      res.redirect(`/dashboard/events/add/${eventid}/add-dates`);
+    } else {
+      req.flash("error", "Something went wrong!");
+      res.redirect(`/dashboard/events/add/${eventid}/add-dates`);
+    }
   },
 
   postEventImage: async (req, res) => {
@@ -266,13 +414,16 @@ module.exports = {
   deleteEventDay: async (req, res) => {
     const { eventid, typeId } = req.params;
 
-    const eventToCheck = await EventDate.find({ event: eventid });
-    eventToCheck.forEach(async (element) => {
-      if (element.typesOfTicket.length < 1) {
-        const deleteDay = await EventDate.findByIdAndDelete(element._id);
-      }
-    });
-
+    // const currentDay = await EventDate.update(
+    //   { event: eventid },
+    //   {
+    //     $pull: {
+    //       "eventdates.typesOfTicket": {
+    //         _id: typeId,
+    //       },
+    //     },
+    //   }
+    // );
     const currentDay = await EventDate.update(
       { event: eventid },
       {
@@ -281,8 +432,22 @@ module.exports = {
             _id: typeId,
           },
         },
-      }
+      },
+      { multi: true }
     );
+
+    const eventToCheck = await EventDate.find({ event: eventid });
+    eventToCheck.forEach(async (element) => {
+      if (element.typesOfTicket.length < 1) {
+        const deleteDay = await EventDate.findByIdAndDelete(element._id);
+        const eventsDayEmptyAray = await Event.findById(eventid);
+        if (eventsDayEmptyAray.days > 0) {
+        } else {
+          eventsDayEmptyAray.days = [];
+          eventsDayEmptyAray.save();
+        }
+      }
+    });
 
     req.flash("error", "Event Day successfully deleted.");
     res.redirect(`/dashboard/events/add/${eventid}/add-dates`);

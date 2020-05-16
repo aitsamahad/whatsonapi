@@ -129,7 +129,7 @@
             <div class="card-body">
               <form action="/dashboard/events/add/<%= eventid %>/add-image" method="POST" enctype="multipart/form-data">
                 <div class="custom-file mb-3">
-                  <input type="file" name="myFileName" id="file" class="custom-file-input">
+                  <input type="file" name="myFileName" id="file" class="custom-file-input" required>
                   <label for="file" class="custom-file-label">Choose File</label>
                 </div>
                 <input type="submit" value="Submit" class="btn btn-primary btn-block">
@@ -153,14 +153,16 @@
                   <% for(let i = 0; i < eventImages.length; i++) { %>
                   <% if(i == 0) { %>
                   <div class="carousel-item active">
-                    <img class="d-block w-100" src="/dashboard/image/<%= eventImages[i] %>" alt="First slide">
+                    <img class="d-block" src="/dashboard/image/<%= eventImages[i] %>" alt="First slide"
+                      style="width:100% !important; height: 400px !important;" />
                     <form action="/dashboard/files/<%= eventid %>/<%= eventImages[i] %>?_method=DELETE" method="POST">
                       <button class="btn btn-danger btn-block mt-4">Delete</button>
                     </form>
                   </div>
                   <% } else { %>
                   <div class="carousel-item">
-                    <img class="d-block w-100" src="/dashboard/image/<%= eventImages[i] %>" alt="First slide">
+                    <img class="d-block" src="/dashboard/image/<%= eventImages[i] %>" alt="First slide"
+                      style="width:100% !important; height: 400px !important;" />
                     <form action="/dashboard/files/<%= eventid %>/<%= eventImages[i] %>?_method=DELETE" method="POST">
                       <button class="btn btn-danger btn-block mt-4">Delete</button>
                     </form>
@@ -199,6 +201,27 @@
                 <div class="card-body">
                   <form class="content" action="/dashboard/events/add/<%= eventid %>/add-dates" method="POST">
                     <!-- Date range -->
+                    <!-- Recuring Events Option START -->
+                    <div class="form-group">
+                      <label for="first-choice">Recuring Mode</label>
+                      <select id="first-choice" name="mode" class="form-control custom-select">
+                        <option selected value="base">None</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+
+                      <br>
+                    </div>
+                    <div class="form-group">
+                      <label for="second-choice">Recuring Period</label>
+                      <select id="second-choice" name="period" class="form-control custom-select">
+                        <option>Please choose from above</option>
+                      </select>
+
+                      <br>
+                    </div>
+                    <!-- Recuring Events Option END -->
                     <div class="form-group">
                       <label style="float: left;">Event Days</label>
                       <span style="float: right;"><a href="" class="btn btn-info mb-3 add_button">+ More
@@ -210,20 +233,21 @@
                             <i class="far fa-calendar-alt"></i>
                           </span>
                         </div>
-                        <input type="text" name="eventDate" class="form-control float-right reservation" id="eventDate">
+                        <input type="text" name="eventDate" class="form-control float-right reservation" id="eventDate"
+                          required>
                       </div>
                       <br>
                       <div class="input-group">
                         <input type="text" placeholder="Ticket Details" class="form-control float-right"
-                          id="ticketDetails" name="ticketDetails">
+                          id="ticketDetails" name="ticketDetails" required>
                       </div>
                       <div class="input-group">
                         <input type="number" placeholder="No. of tickets" class="form-control float-right"
-                          id="noTickets" name="noTickets">
+                          id="noTickets" name="noTickets" required>
                       </div>
                       <div class="input-group">
                         <input type="number" placeholder="Price" class="form-control float-right" id="ticketPrice"
-                          name="ticketPrice">
+                          name="ticketPrice" required>
                       </div>
                       <br>
                       <div class="myList">
@@ -328,6 +352,41 @@
     <!-- Page script -->
     <script>
       $(function () {
+
+
+        $("#first-choice").change(function () {
+
+          var $dropdown = $(this);
+
+          $.getJSON("/data.json", function (data) {
+
+            var key = $dropdown.val();
+            var vals = [];
+
+            switch (key) {
+              case 'daily':
+                vals = data.daily.split(",");
+                break;
+              case 'weekly':
+                vals = data.weekly.split(",");
+                break;
+              case 'monthly':
+                vals = data.monthly.split(",");
+                break;
+              case 'base':
+                vals = ['Please choose from above'];
+            }
+
+            var $secondChoice = $("#second-choice");
+            $secondChoice.empty();
+            $.each(vals, function (index, value) {
+              $secondChoice.append("<option value=" + value + ">" + value + "</option>");
+            });
+
+          });
+        });
+
+
         //Initialize Select2 Elements
         $('.select2').select2()
 
@@ -433,13 +492,13 @@
             // Adding element to <div>
             $("#div_" + nextindex).append(`
                   <div class="input-group">
-                    <input type="text" name="ticketDetails" placeholder="Ticket Details" class="form-control float-right">&nbsp;<span id='remove_${nextindex}' class='remove btn btn-danger'>X</span>
+                    <input type="text" name="ticketDetails" placeholder="Ticket Details" class="form-control float-right" required>&nbsp;<span id='remove_${nextindex}' class='remove btn btn-danger'>X</span>
                     </div>
                     <div class="input-group">
-                    <input type="number" name="noTickets" placeholder="No. of tickets" class="form-control float-right">&nbsp;<span id='remove_${nextindex}' class='remove btn btn-danger'>X</span>
+                    <input type="number" name="noTickets" placeholder="No. of tickets" class="form-control float-right" required>&nbsp;<span id='remove_${nextindex}' class='remove btn btn-danger'>X</span>
                     </div>
                     <div class="input-group">
-                    <input type="number" name="ticketPrice" placeholder="Price" class="form-control float-right" id='txt_${nextindex}'>&nbsp;<span id='remove_${nextindex}' class='remove btn btn-danger'>X</span>
+                    <input type="number" name="ticketPrice" placeholder="Price" class="form-control float-right" id='txt_${nextindex}' required>&nbsp;<span id='remove_${nextindex}' class='remove btn btn-danger'>X</span>
                     </div><br>`);
 
           }
@@ -461,7 +520,7 @@
         });
 
 
-      })
+      });
 
     </script>
 </body>

@@ -172,7 +172,7 @@
                   <div class="form-group">
                     <label for="eventType">Type</label>
                     <select class="form-control custom-select" id="interest" name="interest" required>
-                      <option selected value="<%= event.interest.title %>" disabled>Select one</option>
+                      <option selected value="<%= event.interest._id %>">Default</option>
                       <% interests.forEach(function(interest){%>
                       <option value="<%= interest._id %>"><%= interest.title %></option>
                       <% }); %>

@@ -162,7 +162,7 @@
                   <div class="form-group">
                     <label for="eventType">Type</label>
                     <select class="form-control custom-select" id="interest" name="interest" required>
-                      <option selected value="5e723f60ab28d4c50dba49ab" disabled>Select one</option>
+                      <option selected value="5e723f60ab28d4c50dba49ab">Default</option>
                       <% interests.forEach(function(interest){%>
                       <option value="<%= interest._id %>"><%= interest.title %></option>
                       <% }); %>
@@ -404,8 +404,8 @@
         var url = $('input[name=eventMap]').val();
         var regex = new RegExp('@(.*),(.*),');
         var lon_lat_match = url.match(regex);
-        var lon = lon_lat_match[1];
-        var lat = lon_lat_match[2];
+        var lat = lon_lat_match[1];
+        var lon = lon_lat_match[2];
 
         $('input[name=eventLong]').val(lon);
         $('input[name=eventLat]').val(lat);
